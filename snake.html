@@ -5,48 +5,105 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Snake Game</title>
 <style>
-    #gameContainer {
+    body {
+        margin: 0;
+        padding: 0;
+        background-color: #4CAF50; /* Green background color */
+        height: 100vh;
         display: flex;
         justify-content: center;
         align-items: center;
-        height: calc(100vh - 100px); /* Adjusted height to accommodate buttons */
-        background-color: #fff; /* Default background color */
-        transition: background-color 0.5s ease; /* Smooth color transition */
+    }
+
+    #gameContainer {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent white background for better readability */
+        padding: 20px;
+        border-radius: 10px;
     }
 
     canvas {
-        background-color: #ddd;
+        background-color: #3c763d; /* Green background color */
         border: 5px solid #333;
     }
-    
+
     #score {
         text-align: center;
         font-size: 24px;
         margin-top: 10px;
     }
-    
+
     .controls {
         text-align: center;
         margin-top: 20px;
     }
-    
+
     .controls button {
         margin: 0 10px;
         font-size: 18px;
+    }
+
+    #buttonsContainer {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+    }
+
+    #startBtn, #restartBtn, #pauseBtn {
+        font-size: 18px;
+        padding: 10px 20px;
+        background-color: #4CAF50; /* Green */
+        border: none;
+        color: white;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    #startBtn:hover, #restartBtn:hover, #pauseBtn:hover {
+        background-color: #45a049;
     }
 </style>
 </head>
 <body>
 <div id="gameContainer">
     <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <div id="score">Score: <span class="score">0</span></div>
 </div>
-<div id="score">Score: <span class="score">0</span></div>
-<div class="controls">
-    <button id="pauseBtn">Pause</button>
-    <button id="playBtn">Play</button>
-    <button id="restartBtn">Restart</button>
+<div id="buttonsContainer">
+    <button id="startBtn">Start</button>
+    <button id="restartBtn" style="display: none;">Restart</button>
+    <button id="pauseBtn" style="display: none;">Pause</button>
 </div>
+
 <script>
+  
+
+    function Snake() {
+        // Existing code...
+
+        this.checkCollision = function() {
+            for (let i = 0; i < this.tail.length; i++) {
+                if (this.x === this.tail[i].x && this.y === this.tail[i].y) {
+                    gameRunning = false;
+                    alert("Game Over! You hit yourself.");
+                    restartGame(); // Restart the game
+                }
+            }
+
+            if (this.x >= canvas.width || this.x < 0 || this.y >= canvas.height || this.y < 0) {
+                gameRunning = false;
+                alert("Game Over! You hit the wall.");
+                restartGame(); // Restart the game
+            }
+        };
+    }
+
+ 
+
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
@@ -56,12 +113,17 @@
 
     let snake;
     let fruit;
-    let gameRunning = true;
+    let gameRunning = false;
     let gameLoop;
     let initialSpeed = 100;
     let speed = initialSpeed;
 
-    (function setup() {
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', restartGame);
+    document.getElementById('pauseBtn').addEventListener('click', pauseGame);
+
+    function startGame() {
+        gameRunning = true;
         snake = new Snake();
         fruit = new Fruit();
         
@@ -84,27 +146,16 @@
             snake.checkCollision();
 
         }, speed);
-    }());
+
+        // Hide the start button and show restart and pause buttons
+        document.getElementById('startBtn').style.display = 'none';
+        document.getElementById('restartBtn').style.display = 'inline-block';
+        document.getElementById('pauseBtn').style.display = 'inline-block';
+    }
 
     window.addEventListener('keydown', event => {
         const direction = event.key.replace('Arrow', '');
         snake.changeDirection(direction);
-    });
-
-    document.getElementById('pauseBtn').addEventListener('click', () => {
-        clearInterval(gameLoop);
-        gameRunning = false;
-    });
-
-    document.getElementById('playBtn').addEventListener('click', () => {
-        if (!gameRunning) {
-            gameLoop = window.setInterval(updateGame, speed);
-            gameRunning = true;
-        }
-    });
-
-    document.getElementById('restartBtn').addEventListener('click', () => {
-        restartGame();
     });
 
     function updateGame() {
@@ -132,6 +183,18 @@
         gameLoop = window.setInterval(updateGame, speed);
     }
 
+    function playGame() {
+        if (!gameRunning) {
+            gameLoop = window.setInterval(updateGame, speed);
+            gameRunning = true;
+        }
+    }
+
+    function pauseGame() {
+        clearInterval(gameLoop);
+        gameRunning = false;
+    }
+
     function Snake() {
         this.x = 0;
         this.y = 0;
@@ -143,9 +206,13 @@
         this.draw = function() {
             ctx.fillStyle = "#000";
             for (let i = 0; i < this.tail.length; i++) {
-                ctx.fillRect(this.tail[i].x, this.tail[i].y, scale, scale);
+                ctx.beginPath();
+                ctx.arc(this.tail[i].x + scale / 2, this.tail[i].y + scale / 2, scale / 2, 0, Math.PI * 2);
+                ctx.fill();
             }
-            ctx.fillRect(this.x, this.y, scale, scale);
+            ctx.beginPath();
+            ctx.arc(this.x + scale / 2, this.y + scale / 2, scale / 2, 0, Math.PI * 2);
+            ctx.fill();
         };
 
         this.update = function() {
@@ -216,13 +283,18 @@
         this.y;
 
         this.pickLocation = function() {
-            this.x = (Math.floor(Math.random() * rows)) * scale;
-            this.y = (Math.floor(Math.random() * columns)) * scale;
+            this.x = Math.floor(Math.random() * rows) * scale;
+            this.y = Math.floor(Math.random() * columns) * scale;
         };
 
         this.draw = function() {
-            ctx.fillStyle = "#f00";
-            ctx.fillRect(this.x, this.y, scale, scale);
+            ctx.fillStyle = "#f00"; // Color of the fruit
+            ctx.beginPath();
+            ctx.moveTo(this.x + scale / 2, this.y);
+            ctx.bezierCurveTo(this.x + scale, this.y - scale / 2, this.x + scale, this.y + scale / 2, this.x + scale / 2, this.y + scale);
+            ctx.bezierCurveTo(this.x, this.y + scale / 2, this.x, this.y - scale / 2, this.x + scale / 2, this.y);
+            ctx.closePath();
+            ctx.fill();
         };
     }
 
@@ -241,3 +313,14 @@
 </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
