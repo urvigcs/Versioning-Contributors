@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snake Game</title>
+<style>
+    #gameContainer {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: calc(100vh - 100px); /* Adjusted height to accommodate buttons */
+        background-color: #fff; /* Default background color */
+        transition: background-color 0.5s ease; /* Smooth color transition */
+    }
+
+    canvas {
+        background-color: #ddd;
+        border: 5px solid #333;
+    }
+    
+    #score {
+        text-align: center;
+        font-size: 24px;
+        margin-top: 10px;
+    }
+    
+    .controls {
+        text-align: center;
+        margin-top: 20px;
+    }
+    
+    .controls button {
+        margin: 0 10px;
+        font-size: 18px;
+    }
+</style>
+</head>
+<body>
+<div id="gameContainer">
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+</div>
+<div id="score">Score: <span class="score">0</span></div>
+<div class="controls">
+    <button id="pauseBtn">Pause</button>
+    <button id="playBtn">Play</button>
+    <button id="restartBtn">Restart</button>
+</div>
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const scale = 20;
+    const rows = canvas.height / scale;
+    const columns = canvas.width / scale;
+
+    let snake;
+    let fruit;
+    let gameRunning = true;
+    let gameLoop;
+    let initialSpeed = 100;
+    let speed = initialSpeed;
+
+    (function setup() {
+        snake = new Snake();
+        fruit = new Fruit();
+        
+        fruit.pickLocation();
+
+        gameLoop = window.setInterval(() => {
+            if (!gameRunning) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            fruit.draw();
+            snake.update();
+            snake.draw();
+
+            if (snake.eat(fruit)) {
+                fruit.pickLocation();
+                updateScore();
+                increaseSpeed();
+            }
+
+            snake.checkCollision();
+
+        }, speed);
+    }());
+
+    window.addEventListener('keydown', event => {
+        const direction = event.key.replace('Arrow', '');
+        snake.changeDirection(direction);
+    });
+
+    document.getElementById('pauseBtn').addEventListener('click', () => {
+        clearInterval(gameLoop);
+        gameRunning = false;
+    });
+
+    document.getElementById('playBtn').addEventListener('click', () => {
+        if (!gameRunning) {
+            gameLoop = window.setInterval(updateGame, speed);
+            gameRunning = true;
+        }
+    });
+
+    document.getElementById('restartBtn').addEventListener('click', () => {
+        restartGame();
+    });
+
+    function updateGame() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        fruit.draw();
+        snake.update();
+        snake.draw();
+
+        if (snake.eat(fruit)) {
+            fruit.pickLocation();
+            updateScore();
+            increaseSpeed();
+        }
+
+        snake.checkCollision();
+    }
+
+    function restartGame() {
+        gameRunning = true;
+        snake = new Snake();
+        fruit.pickLocation();
+        updateScore();
+        clearInterval(gameLoop);
+        speed = initialSpeed; // Reset speed to initial value
+        gameLoop = window.setInterval(updateGame, speed);
+    }
+
+    function Snake() {
+        this.x = 0;
+        this.y = 0;
+        this.xSpeed = scale * 1;
+        this.ySpeed = 0;
+        this.total = 0;
+        this.tail = [];
+
+        this.draw = function() {
+            ctx.fillStyle = "#000";
+            for (let i = 0; i < this.tail.length; i++) {
+                ctx.fillRect(this.tail[i].x, this.tail[i].y, scale, scale);
+            }
+            ctx.fillRect(this.x, this.y, scale, scale);
+        };
+
+        this.update = function() {
+            for (let i = 0; i < this.tail.length - 1; i++) {
+                this.tail[i] = this.tail[i + 1];
+            }
+
+            this.tail[this.total - 1] = { x: this.x, y: this.y };
+
+            this.x += this.xSpeed;
+            this.y += this.ySpeed;
+
+            if (this.x >= canvas.width || this.x < 0 || this.y >= canvas.height || this.y < 0) {
+                gameRunning = false;
+                alert("Game Over! You hit the wall.");
+            }
+        };
+
+        this.changeDirection = function(direction) {
+            switch (direction) {
+                case 'Up':
+                    if (this.ySpeed !== scale * 1) {
+                        this.xSpeed = 0;
+                        this.ySpeed = -scale * 1;
+                    }
+                    break;
+                case 'Down':
+                    if (this.ySpeed !== -scale * 1) {
+                        this.xSpeed = 0;
+                        this.ySpeed = scale * 1;
+                    }
+                    break;
+                case 'Left':
+                    if (this.xSpeed !== scale * 1) {
+                        this.xSpeed = -scale * 1;
+                        this.ySpeed = 0;
+                    }
+                    break;
+                case 'Right':
+                    if (this.xSpeed !== -scale * 1) {
+                        this.xSpeed = scale * 1;
+                        this.ySpeed = 0;
+                    }
+                    break;
+            }
+        };
+
+        this.eat = function(fruit) {
+            if (this.x === fruit.x && this.y === fruit.y) {
+                this.total++;
+                return true;
+            }
+            return false;
+        };
+
+        this.checkCollision = function() {
+            for (let i = 0; i < this.tail.length; i++) {
+                if (this.x === this.tail[i].x && this.y === this.tail[i].y) {
+                    gameRunning = false;
+                    alert("Game Over! You hit yourself.");
+                }
+            }
+        };
+    }
+
+    function Fruit() {
+        this.x;
+        this.y;
+
+        this.pickLocation = function() {
+            this.x = (Math.floor(Math.random() * rows)) * scale;
+            this.y = (Math.floor(Math.random() * columns)) * scale;
+        };
+
+        this.draw = function() {
+            ctx.fillStyle = "#f00";
+            ctx.fillRect(this.x, this.y, scale, scale);
+        };
+    }
+
+    function updateScore() {
+        const scoreElement = document.querySelector('.score');
+        scoreElement.textContent = snake.total;
+    }
+
+    function increaseSpeed() {
+        if (snake.total % 5 === 0 && speed > 50) {
+            speed -= 10;
+            clearInterval(gameLoop);
+            gameLoop = window.setInterval(updateGame, speed);
+        }
+    }
+</script>
+</body>
+</html>
